@@ -1,0 +1,17 @@
+{
+  "name": "biconomy_v2",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {},
+  "devDependencies": {
+    "@types/node": "^22.13.4"
+  },
+  "dependencies": {
+    "@biconomy/account": "^4.5.7",
+    "dotenv": "^16.5.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "viem": "^2.30.1"
+  }
+}
