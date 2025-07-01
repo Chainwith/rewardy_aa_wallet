@@ -1,0 +1,21 @@
+{
+  "name": "alchemy",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {},
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "tsx": "^4.20.3"
+  },
+  "dependencies": {
+    "@aa-sdk/core": "^4.47.0",
+    "@account-kit/infra": "^4.47.0",
+    "@account-kit/smart-contracts": "^4.47.0",
+    "@account-kit/wallet-client": "^0.1.0-alpha.9",
+    "dotenv": "^16.5.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
