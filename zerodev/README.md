@@ -16,3 +16,10 @@
 실행하는 파일 npx tx 로 실행 필요
 
 - npx tsx src/1.smart-wallet.ts
+
+## zerodev 공식 문서
+
+아래 하단 링크 (공식문서)
+// https://docs.zerodev.app/sdk/getting-started/quickstart-7702
+(dashboard)
+// https://dashboard.zerodev.app/account/statistics
