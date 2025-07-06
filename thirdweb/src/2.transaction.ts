@@ -12,7 +12,7 @@ import { getWalletBalance, privateKeyToAccount, smartWallet } from "thirdweb/wal
 import { base, baseSepolia, celo } from "thirdweb/chains";
 import { parseEther } from "viem";
 
-async function createSmartAccountClient() {
+async function sendTransactionTest() {
   const client = createThirdwebClient({
     secretKey: process.env.THIRDWEB_SECRET_KEY as string,
   });
@@ -76,4 +76,4 @@ async function createSmartAccountClient() {
   console.log("Transaction Receipt:", receipt);
 }
 
-createSmartAccountClient();
+sendTransactionTest();
