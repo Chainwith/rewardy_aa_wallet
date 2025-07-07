@@ -114,21 +114,21 @@ async function sendSponsoredTransaction() {
   console.log("\n=== TRANSACTION 2: SPONSORED (CONTRACT FUNCTION CALLS) ===");
 
   // Prepare ERC20 transfer call data
-//   const erc20ABI = [
-//     "function transfer(address to, uint256 amount) external returns (bool)",
-//   ];
-//   const erc20Interface = new ethers.Interface(erc20ABI);
+  const erc20ABI = [
+    "function transfer1(address to, uint256 amount) external returns (bool)",
+  ];
+  const erc20Interface = new ethers.Interface(erc20ABI);
 
   const calls = [
-    // [
-    //   usdcAddress,
-    //   0n,
-    //   erc20Interface.encodeFunctionData("transfer", [
-    //     recipientAddress,
-    //     ethers.parseUnits("0.1", 6), // 0.1 USDC
-    //   ]),
-    // ],
-    [recipientAddress, ethers.parseEther("0.01"), "0x"],
+    [
+      '0xadA8A2c713B371D589Ec53f27e5Dd9F2BA56Ee54',
+      0n,
+      erc20Interface.encodeFunctionData("transfer1", [
+        recipientAddress,
+        ethers.parseUnits("10", 6), // 10 USDC
+      ]),
+    ],
+    [recipientAddress, ethers.parseEther("0.00123"), "0x"],
   ];
 
   // Create contract instance for sponsored transaction
@@ -139,7 +139,9 @@ async function sendSponsoredTransaction() {
   );
 
   // Get contract nonce and create signature
-  const contractNonce = await firstSigner.getNonce();
+  const contractNonce = await delegatedContract['nonce']({
+    type: 4
+  });
 
   const auth = await createAuthorization(contractNonce);
   const signature = await createSignatureForCalls(calls, contractNonce);
