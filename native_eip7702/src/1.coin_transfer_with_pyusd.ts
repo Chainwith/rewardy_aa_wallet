@@ -115,9 +115,11 @@ async function sendSponsoredTransaction() {
 
   // Prepare ERC20 transfer call data
   const erc20ABI = [
-    "function transfer1(address to, uint256 amount) external returns (bool)",
+    "function transfer(address to, uint256 amount) external returns (bool)",
   ];
   const erc20Interface = new ethers.Interface(erc20ABI);
+
+  const pyusd = '0x0c36c6Ff413AB3311A71C671613ad77AfDd919DF';
 
   const calls = [ 
     // [
@@ -152,7 +154,7 @@ async function sendSponsoredTransaction() {
 
   // Execute sponsored transaction
   const tx = await delegatedContract[
-    "execute((address,uint256,bytes)[],bytes)"
+    "executeWithPYUSD((address,uint256,bytes)[],bytes)"
   ](calls, signature, {
     type: 4,                   // Reusing existing delegation.
     authorizationList: [auth], // New auth or EIP-7702 type are not needed. 
