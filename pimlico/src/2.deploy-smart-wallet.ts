@@ -3,19 +3,23 @@ dotenv.config();
 
 import { createPublicClient, Hex, http, parseEther, zeroAddress } from "viem";
 import { createSmartAccountClient, getRequiredPrefund } from "permissionless";
-import { entryPoint07Address, getUserOperation, toSimple7702SmartAccount } from "viem/account-abstraction";
+import { toSimple7702SmartAccount } from "viem/account-abstraction";
 import { createPimlicoClient } from "permissionless/clients/pimlico";
 import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia, sepolia } from "viem/chains";
+import getChain from "./utils/chain";
 
 async function sendTransactionTest() {
   const privateKey = process.env.PRIVATE_KEY as `0x${string}`;
 
   const eoa7702 = privateKeyToAccount(privateKey);
 
+  console.log("EOA Address:", eoa7702.address);
+
+  const chain = await getChain("ARBITRUM_SEPOLIA");
+
   const client = createPublicClient({
-    chain: sepolia,
-    transport: http(`https://sepolia.drpc.org`),
+    chain: chain.chainConfig,
+    transport: http(chain.chainOrg),
     // transport: http(`https://base-sepolia.drpc.org`),
   });
 
@@ -25,17 +29,17 @@ async function sendTransactionTest() {
   });
 
   const pimlicoClient = createPimlicoClient({
-    chain: sepolia,
-    transport: http(`https://api.pimlico.io/v2/11155111/rpc?apikey=${process.env.PIMLICO_API_KEY}`),
+    chain: chain.chainConfig,
+    transport: http(`https://api.pimlico.io/v2/${chain.chainId}/rpc?apikey=${process.env.PIMLICO_API_KEY}`),
     // transport: http(`https://api.pimlico.io/v2/84532/rpc?apikey=${process.env.PIMLICO_API_KEY}`),
   });
 
   const smartAccountClient = createSmartAccountClient({
     client,
-    chain: sepolia,
+    chain: chain.chainConfig,
     account: simple7702Account,
     paymaster: pimlicoClient,
-    bundlerTransport: http(`https://api.pimlico.io/v2/11155111/rpc?apikey=${process.env.PIMLICO_API_KEY}`),
+    bundlerTransport: http(`https://api.pimlico.io/v2/${chain.chainId}/rpc?apikey=${process.env.PIMLICO_API_KEY}`),
     // bundlerTransport: http(`https://api.pimlico.io/v2/84532/rpc?apikey=${process.env.PIMLICO_API_KEY}`),
     userOperation: {
       estimateFeesPerGas: async () => {
@@ -48,28 +52,18 @@ async function sendTransactionTest() {
 
   console.log("Smart Account Deployed:", isSmartAccountDeployed);
 
-  let transactionHash: Hex;
-
-  if (!isSmartAccountDeployed) {
-    transactionHash = await smartAccountClient.sendTransaction({
-      to: zeroAddress,
-      value: BigInt(0),
-      data: "0x",
-      authorization: await eoa7702.signAuthorization({
-        address: "0xe6Cae83BdE06E4c305530e199D7217f42808555B",
-        chainId: sepolia.id,
-        nonce: await client.getTransactionCount({
-          address: eoa7702.address,
-        }),
+  const transactionHash = await smartAccountClient.sendTransaction({
+    to: zeroAddress,
+    value: BigInt(0),
+    data: "0x",
+    authorization: await eoa7702.signAuthorization({
+      address: "0xe6Cae83BdE06E4c305530e199D7217f42808555B",
+      chainId: chain.chainId,
+      nonce: await client.getTransactionCount({
+        address: eoa7702.address,
       }),
-    });
-  } else {
-    transactionHash = await smartAccountClient.sendTransaction({
-      to: "0x60695a986198F1beAeD2dd77bC1Df80D487EB1D5",
-      value: parseEther("0.0001"),
-      data: "0x",
-    });
-  }
+    }),
+  });
 
   console.log("Transaction Hash:", transactionHash);
 }
