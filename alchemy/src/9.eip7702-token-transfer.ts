@@ -4,6 +4,7 @@ import { createModularAccountV2Client } from "@account-kit/smart-contracts";
 import { alchemy, arbitrumSepolia, baseSepolia } from "@account-kit/infra";
 import { LocalAccountSigner } from "@aa-sdk/core";
 import { createPublicClient, encodeFunctionData, erc20Abi, zeroAddress } from "viem";
+import getChain from "./utils/chain";
 
 async function Eip7702TokenTransfer() {
   const privateKey = process.env.PRIVATE_KEY;
@@ -26,18 +27,20 @@ async function Eip7702TokenTransfer() {
     apiKey: alchemyApiKey,
   });
 
+  const chain = await getChain("BSC_TESTNET");
+
   const smartAccountClient = await createModularAccountV2Client({
     mode: "7702",
     transport,
     signer,
-    chain: baseSepolia,
+    chain: chain,
     policyId: GAS_MANAGER_POLICY_ID,
   });
 
   console.log("Smart Account Client:", smartAccountClient.getAddress());
 
   const AMOUNT = 1n * 10n ** BigInt(6);
-  const TOKEN = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+  const TOKEN = "0xCFAEBD77D480De51C9cafb26Ee3Ef121fEaA71a2";
 
   const data = encodeFunctionData({
     abi: [
@@ -53,7 +56,7 @@ async function Eip7702TokenTransfer() {
       },
     ],
     functionName: "transfer",
-    args: ["0x60695a986198F1beAeD2dd77bC1Df80D487EB1D5", AMOUNT],
+    args: ["0x636f2433e640EcbC043d1AA2F6F42ff240441cd9", AMOUNT],
   });
 
   const uoHash = await smartAccountClient.sendUserOperation({
