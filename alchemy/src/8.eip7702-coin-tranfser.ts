@@ -1,9 +1,10 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 import { createModularAccountV2Client } from "@account-kit/smart-contracts";
-import { alchemy, arbitrumSepolia, baseSepolia } from "@account-kit/infra";
+import { alchemy } from "@account-kit/infra";
 import { LocalAccountSigner } from "@aa-sdk/core";
 import { createPublicClient, erc20Abi, zeroAddress } from "viem";
+import getChain from "./utils/chain";
 
 async function Eip7702CoinTransfer() {
   const privateKey = process.env.PRIVATE_KEY;
@@ -26,15 +27,17 @@ async function Eip7702CoinTransfer() {
     apiKey: alchemyApiKey,
   });
 
+  const chain = await getChain("BASE_SEPOLIA");
+
   const smartAccountClient = await createModularAccountV2Client({
     mode: "7702",
     transport,
     signer,
-    chain: baseSepolia,
+    chain: chain,
     policyId: GAS_MANAGER_POLICY_ID,
   });
 
-  const amountWei = 10n ** 16n; // 1e16 wei = 0.01 ETH
+  const amountWei = 10n ** 15n; // 1e16 wei = 0.01 ETH
 
   console.log("Smart Account Client:", smartAccountClient.getAddress());
 
