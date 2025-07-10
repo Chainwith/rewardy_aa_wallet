@@ -1,8 +1,8 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 import { signerToEcdsaValidator } from "@zerodev/ecdsa-validator";
-import { getEntryPoint, KERNEL_V3_3 } from "@zerodev/sdk/constants";
-import { createPublicClient, Hex, http } from "viem";
+import { getEntryPoint, KERNEL_V3_1, KERNEL_V3_3 } from "@zerodev/sdk/constants";
+import { createPublicClient, encodeFunctionData, Hex, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   createKernelAccount,
@@ -36,8 +36,6 @@ async function smartWallet() {
 
   const eip7702Account = privateKeyToAccount(formattedPrivateKey as Hex);
 
-  console.log("Signer Address:", eip7702Account.address);
-
   // ZeroDev 스마트 월렛 생성
   // createKernelAccount 함수를 사용하여 스마트 월렛을 생성
   const account = await createKernelAccount(publicClient, {
@@ -45,8 +43,6 @@ async function smartWallet() {
     entryPoint,
     kernelVersion,
   });
-
-  console.log("Smart Wallet Address:", account.address);
 
   const paymasterClient = createZeroDevPaymasterClient({
     chain: chain,
@@ -66,36 +62,37 @@ async function smartWallet() {
         return getUserOperationGasPrice(bundlerClient);
       },
     },
-
-    // Optional -- paymaster 사용할시
-    // paymaster: {
-    //   getPaymasterData(userOperation) {
-    //     return paymasterClient.sponsorUserOperation({ userOperation });
-    //   },
-    // },
   });
 
-  console.log("Kernel Client Address:", kernelClient.account.address);
-
-  const checkNativeBalance = await publicClient.getBalance({ address: kernelClient.account.address });
-
-  console.log("Native Balance:", checkNativeBalance);
-
-  const AMOUNT = 1n * 10n ** 14n; // 0.0001 ETH
+  const AMOUNT = 1n * 10n ** BigInt(5);
+  const TOKEN = "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
 
   console.log("Kernel Client Address:", kernelClient.account.address);
+
+  const data = encodeFunctionData({
+    abi: [
+      {
+        name: "transfer",
+        type: "function",
+        stateMutability: "nonpayable",
+        inputs: [
+          { name: "recipient", type: "address" },
+          { name: "amount", type: "uint256" },
+        ],
+        outputs: [{ name: "success", type: "bool" }],
+      },
+    ],
+    functionName: "transfer",
+    args: ["0x636f2433e640EcbC043d1AA2F6F42ff240441cd9", AMOUNT],
+  });
 
   const txnHash = await kernelClient.sendTransaction({
-    to: "0x636f2433e640EcbC043d1AA2F6F42ff240441cd9",
-    value: AMOUNT,
-    data: "0x",
+    to: TOKEN,
+    value: 0n,
+    data: data,
   });
 
   console.log("Transaction Hash:", txnHash);
-
-  const afterCheckNativeBalance = await publicClient.getBalance({ address: kernelClient.account.address });
-
-  console.log("Native Balance:", afterCheckNativeBalance);
 }
 
 smartWallet();
