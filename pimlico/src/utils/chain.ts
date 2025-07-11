@@ -13,7 +13,8 @@ async function getChain(
   } else if (chain === "ARBITRUM_SEPOLIA") {
     chainConfig = arbitrumSepolia;
     chainId = 421614;
-    chainOrg = "https://arbitrum-sepolia.drpc.org";
+    // chainOrg = "https://arbitrum-sepolia.drpc.org";
+    chainOrg = "https://sepolia-rollup.arbitrum.io/rpc";
   } else if (chain === "SEPOLIA") {
     chainConfig = sepolia;
     chainId = 11155111;

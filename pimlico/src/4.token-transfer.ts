@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import { createPublicClient, Hex, http, parseEther, zeroAddress } from "viem";
+import { createPublicClient, encodeFunctionData, Hex, http, parseEther, zeroAddress } from "viem";
 import { createSmartAccountClient, getRequiredPrefund } from "permissionless";
 import { toSimple7702SmartAccount } from "viem/account-abstraction";
 import { createPimlicoClient } from "permissionless/clients/pimlico";
@@ -50,10 +50,30 @@ async function sendTransactionTest() {
 
   console.log("Smart Account Deployed:", isSmartAccountDeployed);
 
+  const AMOUNT = BigInt(1) * BigInt(10) ** BigInt(5);
+  const TOKEN = "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
+
+  const data = encodeFunctionData({
+    abi: [
+      {
+        name: "transfer",
+        type: "function",
+        stateMutability: "nonpayable",
+        inputs: [
+          { name: "recipient", type: "address" },
+          { name: "amount", type: "uint256" },
+        ],
+        outputs: [{ name: "success", type: "bool" }],
+      },
+    ],
+    functionName: "transfer",
+    args: ["0x636f2433e640EcbC043d1AA2F6F42ff240441cd9", AMOUNT],
+  });
+
   const transactionHash = await smartAccountClient.sendTransaction({
-    to: "0x636f2433e640EcbC043d1AA2F6F42ff240441cd9",
-    value: parseEther("0.0001"),
-    data: "0x",
+    to: TOKEN,
+    value: BigInt(0),
+    data: data,
   });
 
   console.log("Transaction Hash:", transactionHash);
