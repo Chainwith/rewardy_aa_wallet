@@ -15,7 +15,7 @@ async function sendTransactionTest() {
 
   console.log("EOA Address:", eoa7702.address);
 
-  const chain = await getChain("ARBITRUM_SEPOLIA");
+  const chain = await getChain("KAIROS");
 
   const client = createPublicClient({
     chain: chain.chainConfig,

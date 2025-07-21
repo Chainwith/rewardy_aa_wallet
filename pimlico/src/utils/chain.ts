@@ -1,7 +1,14 @@
-import { baseSepolia, arbitrumSepolia, sepolia, optimismSepolia, polygonAmoy, bscTestnet } from "viem/chains";
+import { baseSepolia, arbitrumSepolia, sepolia, optimismSepolia, polygonAmoy, bscTestnet, kairos } from "viem/chains";
 
 async function getChain(
-  chain: "SEPOLIA" | "BASE_SEPOLIA" | "ARBITRUM_SEPOLIA" | "OPTIMISM_SEPOLIA" | "POLYGON_AMOY" | "BNB_TESTNET",
+  chain:
+    | "SEPOLIA"
+    | "BASE_SEPOLIA"
+    | "ARBITRUM_SEPOLIA"
+    | "OPTIMISM_SEPOLIA"
+    | "POLYGON_AMOY"
+    | "BNB_TESTNET"
+    | "KAIROS",
 ) {
   let chainConfig;
   let chainId;
@@ -31,6 +38,10 @@ async function getChain(
     chainConfig = bscTestnet;
     chainId = 97;
     chainOrg = "https://bsc-testnet.drpc.org";
+  } else if (chain === "KAIROS") {
+    chainConfig = kairos;
+    chainId = 1001;
+    chainOrg = "https://public-en-kairos.node.kaia.io";
   } else {
     throw new Error("Invalid chain specified");
   }

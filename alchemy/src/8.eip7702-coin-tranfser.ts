@@ -26,7 +26,7 @@ async function Eip7702CoinTransfer() {
     apiKey: alchemyApiKey,
   });
 
-  const chain = await getChain("BSC_TESTNET");
+  const chain = await getChain("BASE_SEPOLIA");
 
   const smartAccountClient = await createModularAccountV2Client({
     mode: "7702",
