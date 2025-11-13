@@ -87,24 +87,20 @@ export async function getSmartAccountForSponsor() {
 // account.ts (getPklessSmartAccount 수정본)
 export async function getPklessSmartAccount(opts: {
   accountAddress: `0x${string}`;
-  implementation: `0x${string}`;
+  implementation: `0x${string}`;   // 필요시 보관만, 여기서는 직접 사용하지 않음
   entryPoint?: `0x${string}`;
 }) {
   const ep = (opts.entryPoint ?? ENTRYPOINT_V08) as `0x${string}`;
 
   return toSmartAccount({
-    address: opts.accountAddress,
     client: publicClient,
     entryPoint: { address: ep, version: "0.8" },
 
-    // ✅ 여기 추가: viem이 요구하는 형태의 implementation 객체
-    implementation: {
-      async getAddress() {
-        return opts.implementation; // 0x... 주소 반환
-      },
+    // ✅ 여기! `implementation` 속성 제거하고 top-level 훅 제공
+    async getAddress() {
+      return opts.accountAddress;
     },
 
-    // calls → impl.execute / executeBatch
     async encodeCalls(input: any) {
       const calls = Array.isArray(input) ? input : input?.calls ?? [];
       if (!Array.isArray(calls) || calls.length === 0) {
@@ -134,17 +130,20 @@ export async function getPklessSmartAccount(opts: {
       });
     },
 
-    // 배포 없음 → initCode = '0x' 유도
     async getFactoryArgs() {
+      // 배포 없음 → initCode == '0x' 유도
       return { factory: undefined, factoryData: undefined };
     },
 
     async getNonce() {
       return 0n;
     },
+
     async getStubSignature() {
+      // 65바이트 더미
       return ("0x" + "00".repeat(64) + "1b") as `0x${string}`;
     },
+
     async isDeployed() {
       return true;
     },

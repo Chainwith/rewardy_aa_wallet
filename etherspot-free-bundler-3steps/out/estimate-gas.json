@@ -1,0 +1,20 @@
+{
+  "entryPoint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+  "usedPaymaster": true,
+  "needAuthorization": true,
+  "gas": {
+    "callGasLimit": "845000",
+    "verificationGasLimit": "1170000",
+    "preVerificationGas": "156000",
+    "maxFeePerGas": "150000000",
+    "maxPriorityFeePerGas": "150000000"
+  },
+  "budgets": {
+    "totalCallValueWei": "0",
+    "gasBudgetWei": "2171000",
+    "gasCostWeiNoPM": "325650000000000",
+    "requiredNativeNoPM": "325650000000000",
+    "requiredNativeWithPM": "0",
+    "sponsorCostWei": "325650000000000"
+  }
+}

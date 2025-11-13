@@ -63,6 +63,8 @@ async function main() {
     if (paymaster) { estParams.paymaster = paymaster; estParams.paymasterContext = tr.paymasterContext; }
     gasEst = await commonClient.estimateUserOperationGas(estParams);
 
+    console.log('gasEst', gasEst);
+
     const callGas = gasEst.callGasLimit ?? 0n;
     const verGas = gasEst.verificationGasLimit ?? 0n;
     const preGas = gasEst.preVerificationGas ?? 0n;
