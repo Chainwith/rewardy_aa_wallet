@@ -1,0 +1,19 @@
+{
+  "type": "module",
+  "scripts": {
+    "dev:send": "tsx src/userop.send.ts",
+    "dev:sponsor": "tsx src/userop.sponsor.ts",
+    "dev:supported": "tsx -e \"import {getSupportedChainIds,getFreeBundlerUrl} from '@etherspot/free-bundler'; const ids=getSupportedChainIds(); console.log('supported chainIds:', ids); console.log('example urls for first id:', getFreeBundlerUrl(ids[0]));\""
+  },
+  "dependencies": {
+    "@etherspot/free-bundler": "^1.0.2",
+    "dotenv": "^17.2.3",
+    "ts-node": "^10.9.2",
+    "viem": "^2.37.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

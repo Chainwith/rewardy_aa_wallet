@@ -1,0 +1,28 @@
+{
+  "caseId": 3,
+  "chainId": 421614,
+  "accountAddress": "0xA8DB2f183013409056330acDabcc4A9A531FA985",
+  "delegateAddress": "0x2800657Eb527A96374A9299024B8780C2B7050D5",
+  "entryPointHint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+  "calls": [
+    {
+      "to": "0x52974e990efc525465a5c64b8bb50c67bcaceb6a",
+      "value": "2345000000000",
+      "data": "0x"
+    }
+  ],
+  "paymasterUrl": "https://api.pimlico.io/v2/421614/rpc?apikey=pim_6SdaAQkiC6H3SF2iA9xazq",
+  "paymasterContext": {
+    "sponsorshipPolicyId": "sp_huge_captain_stacy"
+  },
+  "notes": "Case4: ETH transfer only",
+  "needAuthorization": true,
+  "authorization": {
+    "address": "0x2800657Eb527A96374A9299024B8780C2B7050D5",
+    "chainId": "0x66eee",
+    "nonce": "0x4",
+    "r": "0x89d021e15015e128613d5bed6dd364b7cae824812f24955ce6a885c20a247d01",
+    "s": "0x753ba51945700af6b5e7ddc6a4899555fa87de4e0786ddf228252300b23dcaa2",
+    "yParity": 0
+  }
+}

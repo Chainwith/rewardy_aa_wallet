@@ -1,0 +1,28 @@
+{
+  "caseId": 2,
+  "chainId": 421614,
+  "accountAddress": "0xA8DB2f183013409056330acDabcc4A9A531FA985",
+  "delegateAddress": "0x2800657Eb527A96374A9299024B8780C2B7050D5",
+  "entryPointHint": "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+  "calls": [
+    {
+      "to": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+      "value": "0",
+      "data": "0xa9059cbb00000000000000000000000052974e990efc525465a5c64b8bb50c67bcaceb6a000000000000000000000000000000000000000000000000000000000000007b"
+    }
+  ],
+  "paymasterUrl": "https://api.pimlico.io/v2/421614/rpc?apikey=pim_6SdaAQkiC6H3SF2iA9xazq",
+  "paymasterContext": {
+    "sponsorshipPolicyId": "sp_huge_captain_stacy"
+  },
+  "notes": "Case2: ERC20 transfer only (type:4)",
+  "needAuthorization": true,
+  "authorization": {
+    "address": "0x2800657Eb527A96374A9299024B8780C2B7050D5",
+    "chainId": "0x66eee",
+    "nonce": "0x1",
+    "r": "0x08220e3724f2878b49c61649666226352e44078a378032b70d3d92d0d07a6609",
+    "s": "0x713805c6fa15a28055ac7f5dc1ccb744d94942d4b4bc2e5e3fd81282cab90114",
+    "yParity": 1
+  }
+}
