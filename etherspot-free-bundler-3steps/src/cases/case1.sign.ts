@@ -1,19 +1,15 @@
-// src/cases/case1.sign.ts
+// src/cases/sign1.build.ts
+// Sign only (PK needed). Reads out/case1.build.json → writes out/case1.signed.json
 import "dotenv/config";
-import { http, createWalletClient } from "viem";
+import { http, createWalletClient, type Hex as HexLike } from "viem";
 import { chain, commonClient, publicClient } from "../client";
-import { getOwnerFromEnv } from "../account";
 import { loadJson, saveJson, parseArgs } from "../shared/io";
-import { createPaymaster, bump, ENTRYPOINT_V08, getFeesL2Safe } from "../shared/helpers";
-import { toSimple7702SmartAccount } from "viem/account-abstraction";
+import { bump, ENTRYPOINT_V08, getFeesL2Safe } from "../shared/helpers";
+import { toSimple7702SmartAccount, createPaymasterClient } from "viem/account-abstraction";
+import { getOwnerFromEnv } from "../account";
 import type { BuiltTR, SignedUserOpFile } from "../shared/types";
 
-type HexLike = `0x${string}`;
-type UoGas = { callGasLimit?: bigint; verificationGasLimit?: bigint; preVerificationGas?: bigint };
-
-const to0x = (n: bigint | number) => (`0x${BigInt(n).toString(16)}`) as HexLike;
-const concatHex = (a: HexLike, b: HexLike) => ((a === "0x" ? "0x" : (a as string)) + (b as string).slice(2)) as HexLike;
-
+// --- compat helpers ---
 function getPrepareActionName(client: any) {
   if (typeof client.prepareUserOperation === "function") return "prepareUserOperation";
   if (typeof client.buildUserOperation === "function") return "buildUserOperation";
@@ -25,6 +21,9 @@ async function prepareUserOperationCompat(client: any, params: any) {
   if (!fn) throw new Error("No prepare/build user operation action found on bundler client.");
   return client[fn](params);
 }
+const to0x = (n: bigint | number) => (`0x${BigInt(n).toString(16)}`) as HexLike;
+const concatHex = (a: HexLike, b: HexLike) =>
+  ((a === "0x" ? "0x" : (a as string)) + (b as string).slice(2)) as HexLike;
 
 function normalizeToV06Shape(uoAny: any) {
   let initCode: HexLike = (uoAny.initCode ?? "0x") as HexLike;
@@ -61,16 +60,7 @@ async function main() {
 
   const tr = loadJson<BuiltTR>(input) as any;
 
-  // 1) 7702 위임 필요 여부
-  const senderCode = await publicClient.getCode({ address: tr.accountAddress as HexLike });
-  const expectedPrefix = (`0xef0100${tr.delegateAddress.toLowerCase().slice(2)}`) as HexLike;
-  const alreadyDelegated =
-    typeof senderCode === "string" &&
-    senderCode.length >= expectedPrefix.length &&
-    senderCode.toLowerCase().startsWith(expectedPrefix.toLowerCase());
-  const needAuthorization = Boolean(process.env.FORCE_AUTH) ? true : !alreadyDelegated;
-
-  // 2) SmartAccount 생성 (🔐 PK 사용은 sign.ts에서만)
+  // 1) SmartAccount (PK 필요)
   const owner = getOwnerFromEnv();
   const sa = await toSimple7702SmartAccount({
     client: publicClient,
@@ -81,57 +71,71 @@ async function main() {
     throw new Error(`sa.address(${sa.address}) != accountAddress(${tr.accountAddress})`);
   }
 
-  // 3) Authorization 생성 (필요 시)
+  // 2) Authorization 생성(필요 시) - EIP-7702
+  let needAuthorization = Boolean(tr.needAuthorization);
+  let authorization: any = tr.authorization;
   if (needAuthorization) {
-    if (owner.address.toLowerCase() !== tr.accountAddress.toLowerCase()) {
-      throw new Error("OWNER_PRIVATE_KEY address != accountAddress (sender)");
-    }
-    const chainId = await publicClient.getChainId();
-    const nonce = await publicClient.getTransactionCount({ address: owner.address, blockTag: "latest" });
-
+    const chainId = await publicClient.getChainId(); // number
+    const nonce = await publicClient.getTransactionCount({
+      address: owner.address,
+      blockTag: "latest",
+    }); // number
     const walletClient = createWalletClient({ account: owner, chain, transport: http(process.env.RPC_URL!) });
     const auth = await walletClient.signAuthorization({
       address: tr.delegateAddress as HexLike,
       chainId,
       nonce,
     });
-
-    tr.needAuthorization = true;
-    tr.authorization = {
+    // signAuthorization 반환 형태를 그대로 보존 (number/bigint 형태 유지)
+    authorization = {
       address: auth.address,
-      chainId,
-      nonce,
+      chainId: chainId,
+      nonce: nonce,
       r: auth.r,
       s: auth.s,
       yParity: auth.yParity,
     };
-  } else {
-    tr.needAuthorization = false;
-    delete tr.authorization;
   }
 
-  const entryPoint = ENTRYPOINT_V08;
+  // ← 여기 핵심: signUserOperation에는 배열(authorizations)로 전달하고,
+  //               chainId/nonce는 number|bigint 그대로 사용(0x 변환 X).
+  const authorizationsForSign =
+    needAuthorization && authorization
+      ? [{
+          address: authorization.address as HexLike,
+          chainId: authorization.chainId as number,   // number/bigint 유지
+          nonce: authorization.nonce as number,       // number/bigint 유지
+          r: authorization.r as HexLike,
+          s: authorization.s as HexLike,
+          yParity: authorization.yParity as 0 | 1,
+        }]
+      : undefined;
+
+  const entryPointAddr = (tr.entryPointHint || ENTRYPOINT_V08) as HexLike;
+  const entryPoint = { address: entryPointAddr, version: "0.8" } as const;
+
   const calls = tr.calls.map((c: any) => ({
     to: c.to as HexLike,
     value: BigInt(c.value),
     data: c.data as HexLike,
   }));
 
-  // 4) 가스/수수료 & PM
+  // 3) Gas & Paymaster
   const { maxFeePerGas, maxPriorityFeePerGas } = await getFeesL2Safe();
-  const paymaster = tr.paymasterUrl ? createPaymaster(tr.paymasterUrl) : undefined;
+  const paymaster = tr.paymasterUrl
+    ? createPaymasterClient({ transport: http(tr.paymasterUrl) })
+    : undefined;
 
-  // 5) estimate
-  let gasEst: UoGas | undefined;
+  // 4) estimate (번들러: authorization 단수 키 허용)
+  let gasEst: { callGasLimit?: bigint; verificationGasLimit?: bigint; preVerificationGas?: bigint } | undefined;
   try {
     const estParams: any = {
       account: sa,
-      calls, entryPoint,
+      calls, entryPoint: entryPoint.address, // estimate/prepare는 string EP도 OK
       maxFeePerGas, maxPriorityFeePerGas,
     };
-    if (tr.needAuthorization && tr.authorization) estParams.authorization = tr.authorization;
+    if (needAuthorization && authorization) estParams.authorization = authorization;
     if (paymaster) { estParams.paymaster = paymaster; estParams.paymasterContext = tr.paymasterContext; }
-
     gasEst = await (commonClient as any).estimateUserOperationGas(estParams);
   } catch (e: any) {
     console.warn("[estimate] failed:", e?.shortMessage || e?.message);
@@ -141,22 +145,21 @@ async function main() {
   const verificationGasLimit = bump(gasEst?.verificationGasLimit, 130n);
   const preVerificationGas = bump(gasEst?.preVerificationGas, 130n);
 
-  // 6) prepare (서명 전 UO 생성)
+  // 5) prepare (서명 전 UO 생성)
   const prepareParams: any = {
     account: sa,
-    calls, entryPoint,
+    calls, entryPoint: entryPoint.address,
     maxFeePerGas, maxPriorityFeePerGas,
     callGasLimit, verificationGasLimit, preVerificationGas,
   };
-  if (tr.needAuthorization && tr.authorization) prepareParams.authorization = tr.authorization;
+  if (needAuthorization && authorization) prepareParams.authorization = authorization;
   if (paymaster) { prepareParams.paymaster = paymaster; prepareParams.paymasterContext = tr.paymasterContext; }
 
   const unsignedAny = await prepareUserOperationCompat((commonClient as any), prepareParams);
 
-  // ✅ 서명 전에 v0.6 형태로 필수 bytes 필드 채우기
+  // v0.6 형태 normalize + 필수 bytes/숫자 정리
   const uoForSign: any = (() => {
     const u = { ...unsignedAny } as any;
-    // bytes 기본값
     u.initCode = (u.initCode ?? "0x") as HexLike;
     u.callData = (u.callData ?? "0x") as HexLike;
     if (!u.paymasterAndData) {
@@ -167,9 +170,7 @@ async function main() {
         u.paymasterAndData = "0x";
       }
     }
-    u.signature = "0x" as HexLike; // 👈 반드시 세팅
-
-    // 숫자 -> bigint
+    u.signature = "0x" as HexLike;
     u.nonce = BigInt(u.nonce ?? 0n);
     u.callGasLimit = BigInt(u.callGasLimit ?? 0n);
     u.verificationGasLimit = BigInt(u.verificationGasLimit ?? 0n);
@@ -179,17 +180,21 @@ async function main() {
     return u;
   })();
 
-  // 7) 서명 — SmartAccount가 7702 authorization 반영하여 서명
+  // 6) 서명 — 여기서 authorizations 배열 + entryPoint 객체 사용
   if (typeof (sa as any).signUserOperation !== "function") {
-    throw new Error("SmartAccount.signUserOperation not found. Please update viem/account-abstraction.");
+    throw new Error("SmartAccount.signUserOperation not found. Update viem/account-abstraction.");
   }
-  const signature: `0x${string}` = await (sa as any).signUserOperation({
-    entryPoint,
+  const signParams: any = {
+    entryPoint,                  // { address, version }
     userOperation: uoForSign,
-    ...(tr.needAuthorization && tr.authorization ? { authorization: tr.authorization } : {}),
-  });
+  };
+  if (authorizationsForSign) {
+    signParams.authorizations = authorizationsForSign; // 배열!
+  }
 
-  // 8) 저장용(모든 숫자 -> 0x 문자열)
+  const signature: `0x${string}` = await (sa as any).signUserOperation(signParams);
+
+  // 7) 저장용(모든 숫자 -> 0x 문자열)
   const uoV06 = normalizeToV06Shape({ ...uoForSign, signature });
   const userOperationHex = {
     sender: uoV06.sender,
@@ -210,11 +215,11 @@ async function main() {
     chainId: tr.chainId,
     accountAddress: tr.accountAddress,
     delegateAddress: tr.delegateAddress,
-    entryPoint,
+    entryPoint: entryPoint.address,
     paymasterUrl: tr.paymasterUrl,
     paymasterContext: tr.paymasterContext,
-    needAuthorization: tr.needAuthorization,
-    authorization: tr.authorization,
+    needAuthorization,
+    authorization, // 참고 저장(사본)
     calls: tr.calls,
     userOperation: userOperationHex,
     notes: (tr.notes || "") + " | fully built & signed (ready to send)",
