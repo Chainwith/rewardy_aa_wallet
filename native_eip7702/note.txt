@@ -1,0 +1,47 @@
+
+Test Environment
+1. Sponsor Address: 0x3edaf998460d3d0ce2bbe74ff8ca4493ca42d572
+2. Delegation Contract: 0x3dB0DA42AD7E7CEe1892733AbC9516D920762E84
+3. Receipent address: 0x52974e990efc525465a5c64b8bb50c67bcaceb6a
+4. Send Address: 0x2221b6be3e35e06f6b43e8444d93be462ea7001c
+
+
+// npx tsx src/1.coin_transfer.ts           
+
+Test Result
+
+1.coin_tranfser.ts
+https://sepolia.etherscan.io/tx/0x65d96bfe387a08cdba7952babb590ff8c082b9ddd80645432cd447a0b8f25a89
+
+From : 0x3eDaf998460d3d0cE2BBE74Ff8cA4493CA42D572 (Sponsor Address)
+To : 0x2221b6bE3E35E06f6b43E8444d93be462eA7001C (Send Address) 
+
+Sponsor Address: 0x3edaf998460d3d0ce2bbe74ff8ca4493ca42d572 
+balance: 0.246153332580927252-> 0.246153150285286606 
+
+Delegation Contract: 0x3dB0DA42AD7E7CEe1892733AbC9516D920762E84
+balance: 0
+
+Receipent address: 0x52974e990efc525465a5c64b8bb50c67bcaceb6a
+balance: 0
+
+Send Address: 0x2221b6be3e35e06f6b43e8444d93be462ea7001c
+balance: 0.049994 -> 0.049988  (0.000006)
+
+2. coin_tranfser_with_pyusd.ts
+https://sepolia.etherscan.io/tx/0x70f97fe3025e0f5160d4447dde941e3813e9ba989ce9acaa7684685f3c08745e
+
+From : 0x3eDaf998460d3d0cE2BBE74Ff8cA4493CA42D572 (Sponsor Address)
+To : 0x2221b6bE3E35E06f6b43E8444d93be462eA7001C (Send Address) 
+
+Sponsor Address: 0x3edaf998460d3d0ce2bbe74ff8ca4493ca42d572 
+balance: 0.246153150285286606 -> 0.246152937594585094
+
+Delegation Contract: 0x3dB0DA42AD7E7CEe1892733AbC9516D920762E84
+balance: 0
+
+Receipent address: 0x52974e990efc525465a5c64b8bb50c67bcaceb6a
+balance: 0
+
+Send Address: 0x2221b6be3e35e06f6b43e8444d93be462ea7001c
+balance: 0.049988 -> 0.049982 (0.000006)

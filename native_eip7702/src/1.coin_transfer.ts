@@ -2,7 +2,6 @@ import "dotenv/config";
 import { ethers, Wallet } from "ethers";
 import { contractABI } from "./contract";
 
-
 // Global variables for reusability
 let provider: ethers.JsonRpcProvider,
   firstSigner: ethers.Wallet,
@@ -17,12 +16,14 @@ async function initializeSigners() {
     !process.env.SPONSOR_PRIVATE_KEY ||
     !process.env.DELEGATION_CONTRACT_ADDRESS ||
     !process.env.RECEIPENT_ADDRESS ||
-    !process.env.RPC_URL 
+    !process.env.RPC_URL
   ) {
     console.error("Please set your environmental variables in .env file.");
     process.exit(1);
   }
-;
+
+  console.log("process.env.RPC_URL", process.env.RPC_URL);
+
   provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 
   firstSigner = new ethers.Wallet(process.env.FIRST_PRIVATE_KEY, provider);
@@ -45,54 +46,22 @@ async function initializeSigners() {
   );
 }
 
-// async function checkDelegationStatus(address = firstSigner.address) {
-//   console.log("\n=== CHECKING DELEGATION STATUS ===");
-
-//   try {
-//     // Get the code at the EOA address
-//     const code = await provider.getCode(address);
-
-//     if (code === "0x") {
-//       console.log(`❌ No delegation found for ${address}`);
-//       return null;
-//     }
-
-//     // Check if it's an EIP-7702 delegation (starts with 0xef0100)
-//     if (code.startsWith("0xef0100")) {
-//       // Extract the delegated address (remove 0xef0100 prefix)
-//       const delegatedAddress = "0x" + code.slice(8); // Remove 0xef0100 (8 chars)
-
-//       console.log(`✅ Delegation found for ${address}`);
-//       console.log(`📍 Delegated to: ${delegatedAddress}`);
-//       console.log(`📝 Full delegation code: ${code}`);
-
-//       return delegatedAddress;
-//     } else {
-//       console.log(`❓ Address has code but not EIP-7702 delegation: ${code}`);
-//       return null;
-//     }
-//   } catch (error) {
-//     console.error("Error checking delegation status:", error);
-//     return null;
-//   }
-// }
 
 // STEP 2: Create Authorization for the EOA\
-async function createAuthorization(nonce: number) {
+async function createAuthorization(nonce: bigint | number) {
   const auth = await firstSigner.authorize({
     address: targetAddress,
-    nonce: nonce,
-    // chainId: 11155111, // Sepolia chain ID
+    nonce,               // bigint/number 모두 허용됨
+    // chainId: 11155111,
   });
-
   console.log("Authorization created with nonce:", auth.nonce);
   return auth;
 }
+
 // STEP 3: Send a Non-Sponsored EIP-7702 Transaction
 // STEP 4: Send a Sponsored EIP-7702 Transaction
 // Function to create signature for sponsored calls, it's needed in the implementation contract
-async function createSignatureForCalls(calls: any[], contractNonce: number) {
-  // Encode the calls for signature
+async function createSignatureForCalls(calls: any[], contractNonce: bigint | number) {
   let encodedCalls = "0x";
   for (const call of calls) {
     const [to, value, data] = call;
@@ -100,14 +69,10 @@ async function createSignatureForCalls(calls: any[], contractNonce: number) {
       .solidityPacked(["address", "uint256", "bytes"], [to, value, data])
       .slice(2);
   }
-
-  // Create the digest that needs to be signed
   const digest = ethers.keccak256(
     ethers.solidityPacked(["uint256", "bytes"], [contractNonce, encodedCalls])
   );
-
-  // Sign the digest with the EOA's private key
-  return await firstSigner.signMessage(ethers.getBytes(digest));
+  return await firstSigner.signMessage(ethers.getBytes(digest)); // Solidity에서 toEthSignedMessageHash와 매칭
 }
 
 async function sendSponsoredTransaction() {
@@ -119,43 +84,49 @@ async function sendSponsoredTransaction() {
   ];
   const erc20Interface = new ethers.Interface(erc20ABI);
 
-  const calls = [ 
-    // [
-    //   '0xadA8A2c713B371D589Ec53f27e5Dd9F2BA56Ee54',
-    //   0n,
-    //   erc20Interface.encodeFunctionData("transfer1", [
-    //     recipientAddress,
-    //     ethers.parseUnits("10", 6), // 10 USDC
-    //   ]),
-    // ],
+  const calls = [
     [Wallet.createRandom().address, ethers.parseEther("0.000001"), "0x"],
     [Wallet.createRandom().address, ethers.parseEther("0.000002"), "0x"],
     [Wallet.createRandom().address, ethers.parseEther("0.000003"), "0x"],
   ];
 
+  console.log("1===");
+
   // Create contract instance for sponsored transaction
   const delegatedContract = new ethers.Contract(
     firstSigner.address,
     contractABI,
-    sponsorSigner,
+    sponsorSigner
   );
 
+  console.log("2===");
+
   // Get contract nonce and create signature
-  const contractNonce = await delegatedContract['nonce']({
-    type: 4
-  });
+  // const contractNonce = await delegatedContract["nonce"]({
+  //   type: 4,
+  // });
+
+  // Ethers v6: getStorage(address, position)
+  const raw = await provider
+    .getStorage(firstSigner.address, 0n)
+    .catch(() => "0x0");
+  // getStorage가 없는 구현체면 getStorageAt로 fallback
+  const rawSlot0 =
+    raw ?? (await (provider as any).getStorageAt(firstSigner.address, 0));
+  const contractNonce = BigInt(rawSlot0 || "0x0");
+  console.log("3===", contractNonce.toString());
 
   const auth = await createAuthorization(contractNonce);
   const signature = await createSignatureForCalls(calls, contractNonce);
 
-//   await checkUSDCBalance(firstSigner.address, "First Signer (Sender)");
+  //   await checkUSDCBalance(firstSigner.address, "First Signer (Sender)");
 
   // Execute sponsored transaction
   const tx = await delegatedContract[
     "execute((address,uint256,bytes)[],bytes)"
   ](calls, signature, {
-    type: 4,                   // Reusing existing delegation.
-    authorizationList: [auth], // New auth or EIP-7702 type are not needed. 
+    type: 4, // Reusing existing delegation.
+    authorizationList: [auth], // New auth or EIP-7702 type are not needed.
   });
 
   console.log("Sponsored transaction sent:", tx.hash);
@@ -165,7 +136,7 @@ async function sendSponsoredTransaction() {
 
   // Check USDC balances after transaction
   console.log("\n--- USDC BALANCES AFTER SPONSORED TX ---");
-//   await checkUSDCBalance(firstSigner.address, "First Signer (Sender)");
+  //   await checkUSDCBalance(firstSigner.address, "First Signer (Sender)");
 
   return receipt;
 }
@@ -173,13 +144,12 @@ async function sendSponsoredTransaction() {
 // STEP 6: Revoke Delegation
 // STEP 7: Run the Full Workflow
 
-
 const run = async () => {
-    await initializeSigners();
+  await initializeSigners();
 
-    // await createAuthorization();
-    // await checkDelegationStatus();
-    await  sendSponsoredTransaction();
-}
+  // await createAuthorization();
+  // await checkDelegationStatus();
+  await sendSponsoredTransaction();
+};
 
 run();

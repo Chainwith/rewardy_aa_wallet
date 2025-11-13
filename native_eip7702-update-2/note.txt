@@ -1,0 +1,20 @@
+
+Test Environment
+1. Sponsor Address: 0x3edaf998460d3d0ce2bbe74ff8ca4493ca42d572
+2. Delegation Contract: 0x1FbE5EaD0f3702d60CBaf7f7A1aD4B7e76976814
+3. Receipent address: 0x52974e990efc525465a5c64b8bb50c67bcaceb6a
+4. Send Address: 0x3C51f88ef69a6758c7C1d4B542d628930f420F85
+
+
+// npx tsx src/1.coin_transfer.ts           
+
+Test Result 
+
+Send Address - 0x3C51f88ef69a6758c7C1d4B542d628930f420F85
+Balance : 0.001937349947632485 -> 0.001936749947632485
+
+Receipent - 0x52974e990efc525465a5c64b8bb50c67bcaceb6a
+Balance : 0.0000371 -> 0.0000377
+
+Sponsor - 0x3edaf998460d3d0ce2bbe74ff8ca4493ca42d572
+Balance : 0.143887665666088431 -> 0.143887556676780575

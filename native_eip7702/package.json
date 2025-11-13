@@ -1,7 +1,20 @@
 {
+  "type": "module",
+  "scripts": {
+    "dev:coin": "tsx src/1.coin_transfer.ts",
+    "dev:pyusd": "tsx src/1.coin_transfer_with_pyusd.ts",
+    "build": "tsc -p .",
+    "start:coin": "node dist/1.coin_transfer.js",
+    "start:pyusd": "node dist/1.coin_transfer_with_pyusd.js"
+  },
   "dependencies": {
     "dotenv": "^17.0.1",
     "ethers": "^6.15.0",
-    "typescript": "^5.8.3"
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   }
 }

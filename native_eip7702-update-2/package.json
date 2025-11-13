@@ -1,0 +1,21 @@
+{
+  "name": "rewardywallet-tests",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.2"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "scripts": {
+    "read": "ts-node src/scripts/01_read_state.ts",
+    "owner:setup": "ts-node src/scripts/02_owner_setup.ts",
+    "exec:eth": "ts-node src/scripts/03_execute_eth.ts",
+    "whitelist:neg": "ts-node src/scripts/04_whitelist_negative.ts",
+    "fee:test": "ts-node src/scripts/05_fee_test.ts",
+    "pause:test": "ts-node src/scripts/06_pause_test.ts",
+    "limit:token": "ts-node src/scripts/07_token_limit_test.ts"
+  }
+}

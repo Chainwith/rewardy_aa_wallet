@@ -45,38 +45,6 @@ async function initializeSigners() {
   );
 }
 
-// async function checkDelegationStatus(address = firstSigner.address) {
-//   console.log("\n=== CHECKING DELEGATION STATUS ===");
-
-//   try {
-//     // Get the code at the EOA address
-//     const code = await provider.getCode(address);
-
-//     if (code === "0x") {
-//       console.log(`❌ No delegation found for ${address}`);
-//       return null;
-//     }
-
-//     // Check if it's an EIP-7702 delegation (starts with 0xef0100)
-//     if (code.startsWith("0xef0100")) {
-//       // Extract the delegated address (remove 0xef0100 prefix)
-//       const delegatedAddress = "0x" + code.slice(8); // Remove 0xef0100 (8 chars)
-
-//       console.log(`✅ Delegation found for ${address}`);
-//       console.log(`📍 Delegated to: ${delegatedAddress}`);
-//       console.log(`📝 Full delegation code: ${code}`);
-
-//       return delegatedAddress;
-//     } else {
-//       console.log(`❓ Address has code but not EIP-7702 delegation: ${code}`);
-//       return null;
-//     }
-//   } catch (error) {
-//     console.error("Error checking delegation status:", error);
-//     return null;
-//   }
-// }
-
 // STEP 2: Create Authorization for the EOA\
 async function createAuthorization(nonce: number) {
   const auth = await firstSigner.authorize({

@@ -1,0 +1,44 @@
+// https://www.quicknode.com/guides/ethereum-development/transactions/eip-7702-transactions-with-ethers
+
+Test Environment
+1. Sponsor Address: 0x3edaf998460d3d0ce2bbe74ff8ca4493ca42d572
+2. Delegation Contract: 0x1FbE5EaD0f3702d60CBaf7f7A1aD4B7e76976814
+3. Receipent address: 0x52974e990efc525465a5c64b8bb50c67bcaceb6a
+4. Send Address: 0xd1244cbaa8ff2752ac43d0fad3bb5c5417111a44
+
+
+// npx tsx src/1.coin_transfer.ts, 2.coin_transfer_with_erc20.ts        
+
+Test Result 
+
+Send Address - 0xd1244cbaa8ff2752ac43d0fad3bb5c5417111a44
+Balance : 0.007565414676261596 -> 0.007562414676261596 -> 0.007562414676261596
+
+Receipent - 0x52974e990efc525465a5c64b8bb50c67bcaceb6a
+Balance : 0.0000419 -> 0.0000449 -> 0.0000449 
+PYUSD : 0.1 -> 0.2 
+
+Sponsor - 0x3edaf998460d3d0ce2bbe74ff8ca4493ca42d572
+Balance : 0.120204188479758605 -> 0.120204119726621099 -> 0.120204029116715009
+
+// npx tsx src/3.coin_transfer_with_fee.ts 
+
+Send Address - 0xd1244cbaa8ff2752ac43d0fad3bb5c5417111a44
+Balance : 0.007562414676261596
+PYUSD : 4.7 -> 4.6
+USDC : 9.999 -> 9.998
+
+Receipent - 0x52974e990efc525465a5c64b8bb50c67bcaceb6a
+Balance : 0.0000449
+PYUSD : 0.3 -> 0.4
+
+Sponsor - 0x3edaf998460d3d0ce2bbe74ff8ca4493ca42d572
+Balance : 0.120203890682330679 -> 0.120203769347996016
+
+Fee Receipent - 0x52974e990efc525465a5c64b8bb50c67bcaceb6a
+Balance : 0.0000449 
+PYUSD : 0.3 -> 0.4 
+
+Fee Receiver - 0x83c3ac176f3958975ed6518c519d46b307329478
+Balance : 0.008965817850652311
+USDC : 0.001 -> 0.02
