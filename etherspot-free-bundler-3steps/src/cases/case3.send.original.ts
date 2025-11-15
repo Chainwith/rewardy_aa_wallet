@@ -5,12 +5,7 @@ import { createPaymasterClient } from "viem/account-abstraction";
 import { commonClient, publicClient } from "../client";
 import { getSmartAccount } from "../account";
 import { loadJson, parseArgs } from "../shared/io";
-import {
-  getFeesL2Safe,
-  waitOrDebug,
-  bump,
-  ENTRYPOINT_V08,
-} from "../shared/helpers";
+import { getFeesL2Safe, waitOrDebug, bump, ENTRYPOINT_V08 } from "../shared/helpers";
 import type { SignedTR } from "../shared/types";
 
 // ────────────────────────────────────────────────────────────
@@ -27,66 +22,6 @@ function fmtEth(wei: bigint, digits = 12) {
   return `${(Number(wei) / 1e18).toFixed(digits)} ETH`;
 }
 
-function toBigIntHex(x: unknown): bigint | undefined {
-  if (!x) return undefined;
-  // viem의 hex string 또는 number/bigint 허용
-  if (typeof x === "string") {
-    const s = x.toLowerCase();
-    if (s.startsWith("0x")) return BigInt(s);
-    // decimal string일 경우에도 수용
-    if (/^\d+$/.test(s)) return BigInt(s);
-  } else if (typeof x === "number") {
-    return BigInt(x);
-  } else if (typeof x === "bigint") {
-    return x;
-  }
-  return undefined;
-}
-
-/**
- * Pimlico의 최소 UO 가스 가격을 조회한다.
- * - 메서드 미지원/오류 시 throw → 호출부에서 fallback 처리
- * - 응답 스키마 변화에 대비하여 maxFee/maxPriority를 다양한 경로에서 탐색
- */
-async function getUoGasFromPimlico(client: any) {
-  const res = await client.request({
-    method: "pimlico_getUserOperationGasPrice",
-    params: [], // ✅ 반드시 빈 배열
-  });
-
-  // 가능한 경로들에서 최솟값(혹은 권장값) 추출
-  // 우선순위: fast > standard > top-level
-  const candMaxFee = [
-    toBigIntHex(res?.fast?.maxFeePerGas),
-    toBigIntHex(res?.standard?.maxFeePerGas),
-    toBigIntHex(res?.maxFeePerGas),
-  ].filter(Boolean) as bigint[];
-
-  const candPrio = [
-    toBigIntHex(res?.fast?.maxPriorityFeePerGas),
-    toBigIntHex(res?.standard?.maxPriorityFeePerGas),
-    toBigIntHex(res?.maxPriorityFeePerGas),
-  ].filter(Boolean) as bigint[];
-
-  if (!candMaxFee.length || !candPrio.length) {
-    throw new Error("pimlico_getUserOperationGasPrice returned empty fields");
-  }
-
-  const minMaxFee = candMaxFee[0]!;
-  const minMaxPrio = candPrio[0]!;
-
-  // 안전 마진 10%
-  const bump10 = (x: bigint) => (x * 110n) / 100n;
-
-  return {
-    minWithBump: {
-      maxFeePerGas: bump10(minMaxFee),
-      maxPriorityFeePerGas: bump10(minMaxPrio),
-    },
-    raw: res,
-  };
-}
-
 const sumCallValues = (calls: { value: bigint }[]) =>
   calls.reduce((a, c) => a + (c.value || 0n), 0n);
 
@@ -98,39 +33,14 @@ async function main() {
   const tr = loadJson<SignedTR>(input);
   const entryPoint = ENTRYPOINT_V08;
 
-  // 2) 기본 가스 상한 (fallback)
-  let { maxFeePerGas, maxPriorityFeePerGas } = await getFeesL2Safe();
-
-  // 2-1) 번들러 최소 요구치 조회 후 상향 (실패 시 fallback 유지)
-  try {
-    const { minWithBump } = await getUoGasFromPimlico(commonClient);
-
-    // 둘 중 더 큰 값 사용
-    maxPriorityFeePerGas = maxPriorityFeePerGas
-      ? maxPriorityFeePerGas < minWithBump.maxPriorityFeePerGas
-        ? minWithBump.maxPriorityFeePerGas
-        : maxPriorityFeePerGas
-      : minWithBump.maxPriorityFeePerGas;
-
-    maxFeePerGas = maxFeePerGas
-      ? maxFeePerGas < minWithBump.maxFeePerGas
-        ? minWithBump.maxFeePerGas
-        : maxFeePerGas
-      : minWithBump.maxFeePerGas;
-  } catch (e) {
-    console.warn(
-      "[gas] pimlico_getUserOperationGasPrice failed, using fallback from getFeesL2Safe()",
-      e
-    );
-  }
+  // 2) 수수료 상한
+  const { maxFeePerGas, maxPriorityFeePerGas } = await getFeesL2Safe();
 
   // 3) 서명 계정 생성 (7702 simple SA)
   const sa = await getSmartAccount({ implementation: tr.delegateAddress });
 
   if (sa.address.toLowerCase() !== tr.accountAddress.toLowerCase()) {
-    throw new Error(
-      `sa.address(${sa.address}) != sender(${tr.accountAddress}).`
-    );
+    throw new Error(`sa.address(${sa.address}) != sender(${tr.accountAddress}).`);
   }
 
   // 4) Paymaster
@@ -141,20 +51,14 @@ async function main() {
   // 5) Authorization 정규화
   const auth: any = (tr as any).authorization;
   if (auth) {
-    if (typeof auth.chainId === "number")
-      auth.chainId = `0x${auth.chainId.toString(16)}`;
-    if (typeof auth.nonce === "number")
-      auth.nonce = `0x${BigInt(auth.nonce).toString(16)}`;
+    if (typeof auth.chainId === "number") auth.chainId = `0x${auth.chainId.toString(16)}`;
+    if (typeof auth.nonce === "number")   auth.nonce   = `0x${BigInt(auth.nonce).toString(16)}`;
   }
 
   const needAuthorization =
-    typeof (tr as any).needAuthorization === "boolean"
-      ? (tr as any).needAuthorization
-      : !!auth;
+    typeof (tr as any).needAuthorization === "boolean" ? (tr as any).needAuthorization : !!auth;
 
-  console.log(
-    `[mode] ${needAuthorization ? "auth=ON" : "auth=OFF (already delegated)"}`
-  );
+  console.log(`[mode] ${needAuthorization ? "auth=ON" : "auth=OFF (already delegated)"}`);
 
   // 6) calls/잔액/로그
   const calls = tr.calls.map((c) => ({
@@ -169,9 +73,7 @@ async function main() {
   console.log(`[balance] native=${fmtEth(nativeBalance)} (addr=${sa.address})`);
   if (maxFeePerGas && maxPriorityFeePerGas) {
     console.log(
-      `[gas] maxFeePerGas=${fmtGwei(
-        maxFeePerGas
-      )} maxPriorityFeePerGas=${fmtGwei(maxPriorityFeePerGas)}`
+      `[gas] maxFeePerGas=${fmtGwei(maxFeePerGas)} maxPriorityFeePerGas=${fmtGwei(maxPriorityFeePerGas)}`
     );
   }
   if (totalValue > 0n) {
@@ -179,15 +81,8 @@ async function main() {
   }
 
   if (needAuthorization) {
-    if (
-      !auth ||
-      !auth.r ||
-      !auth.s ||
-      (auth.yParity !== 0 && auth.yParity !== 1)
-    ) {
-      throw new Error(
-        "Missing/invalid authorization (r/s/yParity). Re-run sign step."
-      );
+    if (!auth || !auth.r || !auth.s || (auth.yParity !== 0 && auth.yParity !== 1)) {
+      throw new Error("Missing/invalid authorization (r/s/yParity). Re-run sign step.");
     }
   }
 
@@ -220,9 +115,7 @@ async function main() {
     console.log("[estimate] OK:", gasEst);
   } catch (e: any) {
     console.warn(
-      `[estimate] failed${paymaster ? " (even with PM)" : ""}: ${
-        e?.shortMessage || e?.message
-      }`
+      `[estimate] failed${paymaster ? " (even with PM)" : ""}: ${e?.shortMessage || e?.message}`
     );
     gasEst = {
       callGasLimit: 650_000n,
@@ -239,11 +132,11 @@ async function main() {
   const pmVerRaw = gasEst?.paymasterVerificationGasLimit ?? 0n;
   const pmPostRaw = gasEst?.paymasterPostOpGasLimit ?? 0n;
 
-  const callGas = bump(callGasRaw, 180n) ?? 0n;
-  const verGas = bump(verGasRaw, 180n) ?? 0n;
-  const preGas = bump(preGasRaw, 180n) ?? 0n;
-  const pmVer = bump(pmVerRaw, 180n) ?? 0n;
-  const pmPost = bump(pmPostRaw, 180n) ?? 0n;
+  const callGas = bump(callGasRaw, 130n) ?? 0n;
+  const verGas = bump(verGasRaw, 130n) ?? 0n;
+  const preGas = bump(preGasRaw, 130n) ?? 0n;
+  const pmVer = bump(pmVerRaw, 130n) ?? 0n;
+  const pmPost = bump(pmPostRaw, 130n) ?? 0n;
 
   // 유저 관점 AA 전체 예산
   const gasBudgetUser = callGas + verGas + preGas;
@@ -252,15 +145,12 @@ async function main() {
 
   // 스폰서 총 예산(보수적: user + pmOnly)
   const sponsorBudget = paymaster ? gasBudgetUser + gasBudgetPmOnly : 0n;
-  const sponsorCostEst =
-    paymaster && maxFeePerGas ? sponsorBudget * maxFeePerGas : 0n;
+  const sponsorCostEst = paymaster && maxFeePerGas ? sponsorBudget * maxFeePerGas : 0n;
 
   // 프리펀드/스폰서 가이드
   if (paymaster) {
     console.log(
-      `[prefund][with PM] required(native)[sender] ≈ ${fmtEth(
-        totalValue
-      )} (gas sponsored)`
+      `[prefund][with PM] required(native)[sender] ≈ ${fmtEth(totalValue)} (gas sponsored)`
     );
     console.log(
       `[payer][estimate] sponsor gasBudget(user)=${gasBudgetUser.toString()} pmExtra=${gasBudgetPmOnly.toString()} total=${(
@@ -275,9 +165,9 @@ async function main() {
     if (nativeBalance < totalValue) {
       const delta = totalValue - nativeBalance;
       console.warn(
-        `[prefund][with PM] NOT ENOUGH. need=${fmtEth(
-          totalValue
-        )} have=${fmtEth(nativeBalance)} delta=${fmtEth(delta)}`
+        `[prefund][with PM] NOT ENOUGH. need=${fmtEth(totalValue)} have=${fmtEth(
+          nativeBalance
+        )} delta=${fmtEth(delta)}`
       );
     }
   } else {
@@ -285,16 +175,16 @@ async function main() {
     const gasCost = maxFeePerGas ? gasBudget * maxFeePerGas : 0n;
     const need = gasCost + totalValue;
     console.log(
-      `[prefund][no PM] gasBudget=${gasBudget.toString()} gasCost≈ ${fmtWei(
+      `[prefund][no PM] gasBudget=${gasBudget.toString()} gasCost≈ ${fmtWei(gasCost)} (${fmtEth(
         gasCost
-      )} (${fmtEth(gasCost)}) required≈ ${fmtEth(need)}`
+      )}) required≈ ${fmtEth(need)}`
     );
     if (nativeBalance < need) {
       const delta = need - nativeBalance;
       console.warn(
-        `[prefund][no PM] NOT ENOUGH. need≈${fmtEth(need)} have=${fmtEth(
-          nativeBalance
-        )} delta≈${fmtEth(delta)}`
+        `[prefund][no PM] NOT ENOUGH. need≈${fmtEth(need)} have=${fmtEth(nativeBalance)} delta≈${fmtEth(
+          delta
+        )}`
       );
     }
   }
@@ -316,23 +206,7 @@ async function main() {
     sendParams.paymasterContext = tr.paymasterContext;
   }
 
-  let userOpHash: `0x${string}`;
-  try {
-    userOpHash = await commonClient.sendUserOperation(sendParams);
-  } catch (e: any) {
-    const msg = `${e?.shortMessage || e?.message || ""} ${e?.details || ""}`;
-    // AA25 guard: 중복 배포 진행 중이면 즉시 종료(재시도 금지)
-    if (/AA25/i.test(msg) || /Another deployment operation/i.test(msg)) {
-      console.error(
-        "[AA25] invalid account deployment: 동일 sender의 배포 UO가 이미 진행 중입니다.\n" +
-          "- 먼저 보낸 UO 완료 여부를 확인하세요 (eth_getUserOperationReceipt 등).\n" +
-          "- 포함 완료되면 다음부터 needAuthorization=false 로 전송하세요."
-      );
-      process.exit(1);
-    }
-    throw e;
-  }
-
+  const userOpHash = await commonClient.sendUserOperation(sendParams);
   console.log("userOpHash =", userOpHash);
 
   const receipt = await waitOrDebug(userOpHash);
@@ -341,28 +215,21 @@ async function main() {
   // 10) 실제 비용 vs 추정 비교 (스폰서 관점)
   const actualUsed = (receipt as any)?.actualGasUsed ?? 0n;
   const actualCost = (receipt as any)?.actualGasCost ?? 0n;
-  const effPrice = (receipt as any)?.receipt?.effectiveGasPrice as
-    | bigint
-    | undefined;
+  const effPrice = (receipt as any)?.receipt?.effectiveGasPrice as bigint | undefined;
 
   if (paymaster) {
     console.log(
-      `[payer][estimate] sponsorCost≈ ${fmtWei(sponsorCostEst)} (${fmtEth(
-        sponsorCostEst
-      )})`
+      `[payer][estimate] sponsorCost≈ ${fmtWei(sponsorCostEst)} (${fmtEth(sponsorCostEst)})`
     );
     console.log(
-      `[payer][actual]   usedGas=${actualUsed} actualCost≈ ${fmtWei(
+      `[payer][actual]   usedGas=${actualUsed} actualCost≈ ${fmtWei(actualCost)} (${fmtEth(
         actualCost
-      )} (${fmtEth(actualCost)})` +
-        (effPrice ? ` (effGasPrice=${fmtGwei(effPrice)})` : "")
+      )})` + (effPrice ? ` (effGasPrice=${fmtGwei(effPrice)})` : "")
     );
     const delta = actualCost - sponsorCostEst;
     const sign = delta >= 0n ? "+" : "";
     console.log(
-      `[payer][delta]    ${sign}${fmtWei(delta)} (${sign}${fmtEth(
-        delta
-      )}) (actual - estimate)`
+      `[payer][delta]    ${sign}${fmtWei(delta)} (${sign}${fmtEth(delta)}) (actual - estimate)`
     );
   }
 }
